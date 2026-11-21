@@ -1,7 +1,7 @@
 // Argus — startup, wiring, timers, pocket mode, wake lock, demo data.
 "use strict";
 (function (A) {
-	A.VERSION = "1.0.0";
+	A.VERSION = "1.0.1";
 	const $ = A.$;
 
 	// ---------- wake lock (keep screen on while scanning) ----------
@@ -330,7 +330,7 @@
 		A.$("#sort-sel").value = A.cfg("sort");
 		A.$("#map-base").value = A.cfg("basemap");
 		A.$("#flt-text").value = A.UI.filter().text || "";
-		A.$("#about-ver").textContent = "Argus " + A.VERSION + " · " + window.ARGUS_SIGNATURES.length + " signatures";
+		A.$("#about-ver").textContent = "Argus " + A.VERSION + (window.ARGUS_NATIVE ? " (app)" : " (web)") + " · " + window.ARGUS_SIGNATURES.length + " signatures";
 		if (A.Store.get("gpsOn", true)) A.Geo.start();
 		A.emit("scan", false);
 		A.emit("gps");
@@ -343,7 +343,7 @@
 		if (A.Scan.support() !== "ok") {
 			A.$("#bt-warn").classList.remove("hidden");
 		}
-		if ("serviceWorker" in navigator) {
+		if ("serviceWorker" in navigator && !window.ARGUS_NATIVE) {
 			navigator.serviceWorker.register("sw.js").catch(() => {});
 		}
 	}

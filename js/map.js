@@ -13,22 +13,53 @@
 	};
 
 	const hasCache = () => (typeof caches !== "undefined" && window.isSecureContext);
+	const hasIdb = () => (typeof indexedDB !== "undefined");
+	M.canStore = () => hasCache() || hasIdb();
 
-	async function tileSrc(url) {
-		if (hasCache()) {
-			try {
+	// Tile store: Cache API when available, otherwise IndexedDB blobs.
+	const TS = {
+		get: async (url) => {
+			if (hasCache()) {
 				const c = await caches.open(TILE_CACHE);
 				const hit = await c.match(url);
-				if (hit) return URL.createObjectURL(await hit.blob());
-				if (!navigator.onLine) return null;
-				const res = await fetch(url, { mode: "cors" });
-				if (res.ok) {
-					c.put(url, res.clone()).catch(() => {});
-					return URL.createObjectURL(await res.blob());
-				}
-			} catch (e) {
-				// fall back to plain image
+				return hit ? hit.blob() : null;
 			}
+			if (hasIdb()) return (await A.Store.tileGet(url)) || null;
+			return null;
+		},
+		has: async (url) => {
+			if (hasCache()) {
+				const c = await caches.open(TILE_CACHE);
+				return !!(await c.match(url));
+			}
+			if (hasIdb()) return A.Store.tileHas(url);
+			return false;
+		},
+		put: async (url, blob) => {
+			if (hasCache()) {
+				const c = await caches.open(TILE_CACHE);
+				await c.put(url, new Response(blob, { headers: { "Content-Type": blob.type || "image/png" } }));
+			} else if (hasIdb()) await A.Store.tilePut(url, blob);
+		},
+		clear: async () => {
+			if (hasCache()) await caches.delete(TILE_CACHE);
+			if (hasIdb()) await A.Store.tileClear();
+		},
+	};
+
+	async function tileSrc(url) {
+		try {
+			const hit = await TS.get(url);
+			if (hit) return URL.createObjectURL(hit);
+			if (!navigator.onLine) return null;
+			const res = await fetch(url, { mode: "cors" });
+			if (res.ok) {
+				const blob = await res.blob();
+				TS.put(url, blob).catch(() => {});
+				return URL.createObjectURL(blob);
+			}
+		} catch (e) {
+			// fall back to plain image
 		}
 		return navigator.onLine ? url : null;
 	}
@@ -237,7 +268,7 @@
 
 	M.saveArea = async () => {
 		if (!M.ready) return;
-		if (!hasCache()) {
+		if (!M.canStore()) {
 			A.toast(A.t("map.nocache"));
 			return;
 		}
@@ -264,7 +295,6 @@
 			A.toast(A.t("map.toobig", { n: jobs.length, l: LIMIT }), 4000);
 			return;
 		}
-		const c = await caches.open(TILE_CACHE);
 		let done = 0;
 		let fail = 0;
 		const note = A.$("#map-note");
@@ -272,10 +302,9 @@
 			while (jobs.length) {
 				const url = jobs.shift();
 				try {
-					const hit = await c.match(url);
-					if (!hit) {
+					if (!(await TS.has(url))) {
 						const res = await fetch(url, { mode: "cors" });
-						if (res.ok) await c.put(url, res);
+						if (res.ok) await TS.put(url, await res.blob());
 						else fail++;
 					}
 				} catch (e) {
@@ -293,7 +322,7 @@
 	};
 
 	M.clearTiles = async () => {
-		if (hasCache()) await caches.delete(TILE_CACHE);
+		await TS.clear();
 		A.toast(A.t("map.cleared"));
 	};
 

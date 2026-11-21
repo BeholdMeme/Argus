@@ -1,12 +1,12 @@
 // Argus service worker — keeps the app itself available offline.
 // Map tiles are cached by the page (js/map.js), not here.
-const VERSION = "argus-app-v1.0.0";
+const VERSION = "argus-app-v1.0.1";
 const FILES = [
 	"./", "index.html", "css/app.css", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
 	"vendor/leaflet/leaflet.js", "vendor/leaflet/leaflet.css",
 	"vendor/leaflet/images/marker-icon.png", "vendor/leaflet/images/marker-shadow.png", "vendor/leaflet/images/layers.png",
 	"data/signatures.js", "data/companies.js", "data/fastpair.js",
-	"js/util.js", "js/i18n.js", "js/store.js", "js/signatures.js", "js/decode.js", "js/geo.js", "js/scanner.js",
+	"js/native.js", "js/util.js", "js/i18n.js", "js/store.js", "js/signatures.js", "js/decode.js", "js/geo.js", "js/scanner.js",
 	"js/alerts.js", "js/reports.js", "js/map.js", "js/hunt.js", "js/ui.js", "js/app.js",
 ];
 

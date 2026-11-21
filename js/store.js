@@ -30,11 +30,12 @@
 		if (dbp) return dbp;
 		dbp = new Promise((resolve) => {
 			try {
-				const req = indexedDB.open("argus", 1);
+				const req = indexedDB.open("argus", 2);
 				req.onupgradeneeded = () => {
 					const d = req.result;
 					if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
 					if (!d.objectStoreNames.contains("kv")) d.createObjectStore("kv");
+					if (!d.objectStoreNames.contains("tiles")) d.createObjectStore("tiles");
 				};
 				req.onsuccess = () => resolve(req.result);
 				req.onerror = () => resolve(null);
@@ -76,6 +77,12 @@
 		alerts: (s.alerts || []).length,
 		pathM: s.pathM || 0,
 	})).sort((a, b) => b.start - a.start));
+
+	// Map tiles (used when the Cache API is not available, e.g. inside the app).
+	S.tileGet = (url) => tx("tiles", "readonly", (st) => st.get(url));
+	S.tilePut = (url, blob) => tx("tiles", "readwrite", (st) => st.put(blob, url));
+	S.tileHas = (url) => tx("tiles", "readonly", (st) => st.getKey(url)).then((k) => k != null);
+	S.tileClear = () => tx("tiles", "readwrite", (st) => st.clear());
 
 	S.kvGet = (k) => tx("kv", "readonly", (st) => st.get(k));
 	S.kvSet = (k, v) => tx("kv", "readwrite", (st) => st.put(v, k));
