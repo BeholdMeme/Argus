@@ -1,20 +1,32 @@
 # Argus
 
-A receive-only Bluetooth LE watcher for iPhone, built as a web app that runs inside the **Bluefy** browser. It listens, identifies what it hears, maps it, and warns you about trackers, drones, hacking tools and GPS tampering. Named after Argus Panoptes, the hundred-eyed giant nothing could hide from.
+A receive-only Bluetooth LE watcher for iPhone. It listens, identifies what it hears, maps it, and warns you about trackers, drones, hacking tools and GPS tampering. Named after Argus Panoptes, the hundred-eyed giant nothing could hide from.
 
 Built for use in Russia: English and Russian interface, OpenStreetMap maps (no Google or Yandex needed), offline map saving, and known-camera lists from OpenStreetMap.
 
-Argus is a Bluetooth-only, iPhone-friendly port of the ideas and signature library in [Fieldwatch](https://github.com/OffGridPete/Fieldwatch) by Off Grid Pete LLC (MIT).
+Argus is a Bluetooth-only iPhone port of the ideas and signature library in [Fieldwatch](https://github.com/OffGridPete/Fieldwatch) by Off Grid Pete LLC (MIT).
 
-## Install on iPhone
+## How it is built
 
-1. Install **Bluefy – Web BLE Browser** from the App Store (free). Do this before travelling.
-2. Open Bluefy and go to **https://beholdmeme.github.io/Argus/**
-3. Bookmark it (or set it as Bluefy's home page).
-4. Tap **Start scan**, and allow Bluetooth and Location when asked.
-5. Optional: **Settings → Bluetooth check** shows whether scanning works. **Demo data** shows what the app looks like with fake devices.
+No iPhone browser can scan for all nearby Bluetooth devices (Safari has no Web Bluetooth; Bluefy and WebBLE only connect to one picked device). So Argus is a small native app (`ios/`) that scans with CoreBluetooth and runs the Argus web app inside it. GitHub Actions builds an unsigned `Argus.ipa` on every change and publishes it to the [app release](https://github.com/BeholdMeme/Argus/releases/tag/app). You install it with SideStore using a normal (free) Apple ID.
 
-Safari can't run Argus: Apple doesn't allow Bluetooth in Safari. Bluefy is only the browser Argus runs in.
+## Install on iPhone (Windows PC, one time)
+
+1. **iPhone:** install **LocalDevVPN** from the App Store, open it and tap **Connect** (allow the VPN).
+2. **PC:** install **iTunes from apple.com** (not the Microsoft Store version) and open it once.
+3. **PC:** install **iloader** (`iloader-windows-x64.msi`) from https://github.com/nab138/iloader/releases
+4. Plug the iPhone in with a cable, tap **Trust**, and in iloader click **Refresh**, then sign in with your Apple ID (approve the code on the phone).
+5. Click your iPhone's name, then **SideStore (Stable)**. Wait for "SideStore Installed!".
+6. **iPhone Settings:** General → VPN & Device Management → trust your Apple ID; Privacy & Security → **Developer Mode** on → restart → Enable.
+7. Open **LocalDevVPN** (Connect), then **SideStore** → Settings → sign in with the same Apple ID.
+8. On the iPhone, open Safari: https://github.com/BeholdMeme/Argus/releases/download/app/Argus.ipa → download it.
+9. In SideStore: **My Apps → +** → pick `Argus.ipa` from Downloads. Done: Argus is on your home screen.
+
+**Every 7 days:** open LocalDevVPN (Connect), then SideStore → My Apps → **Refresh All**. No computer needed. Avoid iOS updates while travelling, because they can break the pairing and you'd need the PC again.
+
+**Updating Argus:** download the new Argus.ipa again and install it the same way. Your data is kept.
+
+The web version at https://beholdmeme.github.io/Argus/ opens in any browser for **Demo data** and saved reports, but it can't scan.
 
 ## What it does
 
@@ -58,7 +70,7 @@ Safari can't run Argus: Apple doesn't allow Bluetooth in Safari. Bluefy is only 
 ## Limits (be honest with yourself)
 
 - **No Wi-Fi.** iPhone doesn't let any app or web page scan Wi-Fi.
-- **The screen must stay on with Argus open.** iPhone pauses Bluetooth scanning for web pages in the background. Use Pocket mode and low brightness, and set Auto-Lock to Never while scanning if the screen keeps locking.
+- **The screen must stay on with Argus open.** iPhone pauses scanning when the app is in the background. Use Pocket mode and low brightness, and set Auto-Lock to Never while scanning if the screen keeps locking.
 - iPhone may hide some Apple advertisements, so AirTag detection can be weaker than on Android.
 - Device IDs are per-browser, and many devices change their address every few minutes.
 - Signal strength is loudness, not distance. Map pins are where **you** were, except drones, which broadcast their own GPS.
@@ -77,7 +89,9 @@ Everything stays on the phone (browser storage). Nothing is uploaded. The only n
 - `data/companies.js`: Bluetooth SIG company IDs (Nordic Semiconductor bluetooth-numbers-database)
 - `data/fastpair.js`: Google Fast Pair model names (via Fieldwatch)
 - `vendor/leaflet/`: Leaflet 1.9.4 map library
-- `sw.js`: offline cache for the app itself
+- `sw.js`: offline cache for the web version
+- `js/native.js`: bridge to the native app (Bluetooth scanning, location, keep-awake, share)
+- `ios/`: native iPhone shell (Swift, XcodeGen); `.github/workflows/ios.yml` builds the IPA
 
 ## License
 
