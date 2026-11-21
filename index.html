@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+	<meta name="theme-color" content="#0b0f14">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<title>Argus</title>
+	<link rel="manifest" href="manifest.webmanifest">
+	<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+	<link rel="apple-touch-icon" href="icons/icon-192.png">
+	<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+	<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+	<header id="topbar">
+		<div class="brand"><span class="eye">◉</span> ARGUS</div>
+		<div class="status">
+			<span id="st-scan" class="pill off">Idle</span>
+			<span id="st-gps" class="pill off">GPS</span>
+			<span id="st-count" class="pill">0</span>
+			<button id="btn-mute" class="mute" aria-label="Sound on/off">🔊</button>
+		</div>
+	</header>
+
+	<div id="bt-warn" class="warnbar hidden" data-i18n="warn.bluefy">Bluetooth scanning is not available in this browser. Open Argus in the Bluefy app.</div>
+	<div id="banner" class="banner hidden"></div>
+
+	<main>
+		<!-- LIVE -->
+		<section id="tab-live" class="tab active">
+			<div class="controls">
+				<button id="btn-scan" class="big primary">Start scan</button>
+				<button id="btn-pocket" class="big" data-i18n="btn.pocket">Pocket mode</button>
+			</div>
+			<div class="filters">
+				<input id="flt-text" type="search" data-i18n-ph="flt.search" placeholder="Search">
+				<button id="btn-filters" data-i18n="flt.btn">Filters</button>
+			</div>
+			<div class="filters">
+				<select id="view-sel">
+					<option value="list" data-i18n="view.list">List</option>
+					<option value="hybrid" data-i18n="view.hybrid">List + signal graph</option>
+					<option value="timeline" data-i18n="view.timeline">Timeline (15 min)</option>
+					<option value="class" data-i18n="view.class">By class</option>
+				</select>
+				<select id="sort-sel">
+					<option value="rssi" data-i18n="sort.rssi">Strongest</option>
+					<option value="recent" data-i18n="sort.recent">Last heard</option>
+					<option value="first" data-i18n="sort.first">Newest</option>
+					<option value="time" data-i18n="sort.time">Longest nearby</option>
+					<option value="name" data-i18n="sort.name">Name</option>
+				</select>
+			</div>
+			<div id="flt-summary" class="flt-summary"></div>
+			<div id="list" class="list"></div>
+			<div id="list-empty" class="empty"></div>
+		</section>
+
+		<!-- MAP -->
+		<section id="tab-map" class="tab">
+			<div id="map"></div>
+			<div class="map-tools">
+				<button id="map-center" data-i18n="map.center">Me</button>
+				<select id="map-show">
+					<option value="all" data-i18n="flt.all">All</option>
+					<option value="matched" data-i18n="flt.matched">Identified</option>
+					<option value="watched" data-i18n="flt.watched">Watched</option>
+					<option value="moving" data-i18n="flt.moving">Moving with you</option>
+				</select>
+				<select id="map-base">
+					<option value="osm" data-i18n="base.osm">Street</option>
+					<option value="topo" data-i18n="base.topo">Topo</option>
+					<option value="sat" data-i18n="base.sat">Satellite</option>
+				</select>
+			</div>
+			<div class="map-tools bottom">
+				<button id="map-save" data-i18n="map.save">Save area offline</button>
+				<button id="map-cams" data-i18n="map.cams">Load cameras here</button>
+			</div>
+			<div id="map-note" class="map-note"></div>
+		</section>
+
+		<!-- HUNT (radar + single-device tracking) -->
+		<section id="tab-hunt" class="tab">
+			<div id="radar-box">
+				<div class="filters">
+					<select id="radar-show">
+						<option value="nomine" data-i18n="radar.nomine">All except Mine</option>
+						<option value="all" data-i18n="flt.all">All</option>
+						<option value="matched" data-i18n="flt.matched">Identified</option>
+						<option value="moving" data-i18n="flt.moving">Moving with you</option>
+					</select>
+					<span id="radar-count" class="pill"></span>
+				</div>
+				<canvas id="radar"></canvas>
+				<p class="hint" data-i18n="radar.hint">Center = you. Closer to center = louder signal (usually nearer). The angle is NOT a direction, just a fixed seat. ▲ getting louder, ▼ fading. Tap a dot, then Hunt.</p>
+			</div>
+			<div id="hunt-box" class="hidden">
+				<button id="hunt-back" data-i18n="hunt.back">‹ Back to radar</button>
+				<div id="hunt-name" class="hunt-name"></div>
+				<div id="hunt-sig" class="hunt-sig"></div>
+				<div class="meter-wrap">
+					<div id="hunt-rssi" class="hunt-rssi">--</div>
+					<div class="hunt-unit">dBm</div>
+					<div id="hunt-trend" class="hunt-trend"></div>
+				</div>
+				<div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
+				<div id="hunt-words" class="hunt-words"></div>
+				<div class="hunt-stats">
+					<div><span data-i18n="hunt.peak">Peak</span> <b id="hunt-peak">--</b></div>
+					<div><span data-i18n="hunt.age">Last heard</span> <b id="hunt-age">--</b></div>
+				</div>
+				<div class="controls">
+					<button id="hunt-sound" class="big">Sound</button>
+					<button id="hunt-reset" class="big" data-i18n="hunt.reset">Reset peak</button>
+				</div>
+				<div id="hunt-map"></div>
+				<p class="hint" data-i18n="hunt.hint">Walk slowly and turn in a circle. Your body blocks signal, so the number jumps when you face the device. Warmer dots = stronger. ★ = strongest spot.</p>
+			</div>
+		</section>
+
+		<!-- ALERTS -->
+		<section id="tab-alerts" class="tab">
+			<div class="controls">
+				<button id="alerts-clear" class="big" data-i18n="alerts.clear">Clear</button>
+			</div>
+			<div id="alerts" class="list"></div>
+			<div id="alerts-empty" class="empty" data-i18n="alerts.empty">No alerts yet.</div>
+		</section>
+
+		<!-- REPORTS -->
+		<section id="tab-reports" class="tab">
+			<div class="card">
+				<h3 data-i18n="rep.current">This session</h3>
+				<div id="rep-cur" class="rep-cur"></div>
+				<div class="controls wrap">
+					<button id="rep-debrief" class="primary" data-i18n="rep.debrief">Debrief</button>
+					<button id="rep-ai" data-i18n="rep.ai">AI export</button>
+					<button id="rep-export" data-i18n="rep.export">Export</button>
+					<button id="rep-save" data-i18n="rep.save">Save now</button>
+					<button id="rep-rename" data-i18n="rep.rename">Rename</button>
+					<button id="rep-new" data-i18n="rep.new">New session</button>
+				</div>
+			</div>
+			<div class="card">
+				<h3 data-i18n="rep.saved.h">Saved sessions</h3>
+				<p class="hint" data-i18n="rep.cmphint">Tick one to compare with this session, or two to compare them with each other.</p>
+				<button id="rep-compare" data-i18n="rep.compare">Compare ticked</button>
+				<div id="rep-list" class="list"></div>
+			</div>
+		</section>
+
+		<!-- SETTINGS -->
+		<section id="tab-settings" class="tab">
+			<div class="card">
+				<h3 data-i18n="set.lang">Language</h3>
+				<div class="seg">
+					<button data-lang="en">English</button>
+					<button data-lang="ru">Русский</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.gps">Location (GPS)</h3>
+				<label class="row"><input type="checkbox" id="set-gps"> <span data-i18n="set.gps.on">GPS on</span></label>
+				<p class="hint" data-i18n="set.gps.hint">Needed for the map, trails, Moving with you, tracker following, drone distance and the GPS-jump check. Turn off when sitting still or low on battery. The list, radar and Hunt meter still work.</p>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.trackers">Trackers and following</h3>
+				<label class="row"><input type="checkbox" data-cfg="al_tracker"> <span data-i18n="al.tracker">Separated tag staying with you (30 min, 3 places)</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_places"> <span data-i18n="al.places">Tracker heard at 2 of your places (7 days)</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_moving"> <span data-i18n="al.moving">Any device moving with you</span></label>
+				<div class="row"><span data-i18n="al.movingmin">…after following you for</span>
+					<select data-cfg="moving_min_m" data-num><option value="150">150 m</option><option value="300">300 m</option><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option></select></div>
+				<label class="row"><input type="checkbox" data-cfg="al_approach"> <span data-i18n="al.approach">Device getting closer fast</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_watch"> <span data-i18n="al.watch">Watched device shows up</span></label>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.drones">Drones (Remote ID)</h3>
+				<label class="row"><input type="checkbox" data-cfg="al_drone_near"> <span data-i18n="al.dronenear">Drone broadcasting within</span>
+					<select data-cfg="drone_near_m" data-num><option value="100">100 m</option><option value="250">250 m</option><option value="500">500 m</option><option value="1000">1 km</option></select></label>
+				<label class="row"><input type="checkbox" data-cfg="al_drone_swarm"> <span data-i18n="al.swarm">Swarm: many new drones at once</span></label>
+				<div class="row"><span data-i18n="al.swarmn">New drone IDs</span>
+					<select data-cfg="swarm_min" data-num><option>3</option><option>4</option><option>5</option><option>8</option><option>10</option><option>15</option><option>20</option></select>
+					<span data-i18n="al.within">within</span>
+					<select data-cfg="swarm_win" data-num><option value="15">15 s</option><option value="30">30 s</option><option value="60">60 s</option><option value="120">2 min</option></select></div>
+				<div class="row"><span data-i18n="al.quiet">Then stay quiet for</span>
+					<select data-cfg="swarm_quiet" data-num><option value="1">1 min</option><option value="2">2 min</option><option value="5">5 min</option><option value="10">10 min</option></select></div>
+				<label class="row"><input type="checkbox" data-cfg="al_drone_class"> <span data-i18n="al.droneclass">Any drone or controller signal</span></label>
+				<p class="hint" data-i18n="set.drones.hint">Drones that broadcast Remote ID over Bluetooth show live on the map with their trail and pilot position. Wi-Fi-only Remote ID can't be heard on iPhone.</p>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.other">Other alerts</h3>
+				<label class="row"><input type="checkbox" data-cfg="al_bookmark"> <span data-i18n="al.bookmark">Bookmarked signatures (★ in the library)</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_hack"> <span data-i18n="al.hack">Hacking tools (Flipper, pentest boards)</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_police"> <span data-i18n="al.police">Police / body cams / military gear</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_surv"> <span data-i18n="al.surv">Surveillance gear</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_flood"> <span data-i18n="al.flood">Bluetooth pairing / spam flood</span></label>
+				<label class="row"><input type="checkbox" data-cfg="al_gps"> <span data-i18n="al.gps">GPS jump or sudden loss (possible jamming / spoofing)</span></label>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.howalert">How alerts get your attention</h3>
+				<label class="row"><input type="checkbox" data-cfg="snd_beep"> <span data-i18n="al.beep">Beep</span></label>
+				<label class="row"><input type="checkbox" data-cfg="snd_voice"> <span data-i18n="al.voice">Speak it</span></label>
+				<label class="row"><input type="checkbox" data-cfg="snd_flash"> <span data-i18n="al.flash">Flash the screen</span></label>
+				<button id="test-alert" data-i18n="al.test">Test alert</button>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.display">Display</h3>
+				<div class="row"><span data-i18n="set.theme">Theme</span>
+					<select data-cfg="theme"><option value="dark" data-i18n="th.dark">Dark</option><option value="night" data-i18n="th.night">Night (red)</option></select></div>
+				<div class="row"><span data-i18n="set.strong">"Strong" means at least</span>
+					<select data-cfg="strong" data-num><option value="-55">-55 dBm</option><option value="-65">-65 dBm</option><option value="-70">-70 dBm</option><option value="-75">-75 dBm</option><option value="-80">-80 dBm</option></select></div>
+				<div class="row"><span data-i18n="set.stale">Drop from list after</span>
+					<select data-cfg="stale" data-num><option value="30">30 s</option><option value="60">1 min</option><option value="120">2 min</option><option value="300">5 min</option></select></div>
+				<label class="row"><input type="checkbox" id="set-privacy"> <span data-i18n="set.privacy">Privacy mode (hide IDs and coordinates on screen)</span></label>
+				<label class="row"><input type="checkbox" data-cfg="cameras"> <span data-i18n="set.cameras">Show known cameras on the map</span></label>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.battery">Battery</h3>
+				<p class="hint" data-i18n="set.battery.hint">The screen is the biggest drain. Use Pocket mode (black screen, scanning keeps going), turn brightness down, and turn GPS off when you are not moving. Set iPhone Auto-Lock to Never while scanning if the screen keeps locking.</p>
+				<label class="row"><input type="checkbox" data-cfg="slowui"> <span data-i18n="set.slowui">Slow screen updates (every 3 s)</span></label>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.sigs">Signature library</h3>
+				<p id="sig-count" class="hint"></p>
+				<button id="sig-open" class="primary" data-i18n="sig.open">Open library</button>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.places">Places</h3>
+				<p class="hint" data-i18n="pl.hint">Save places like your home or hotel. Positions inside a hidden place are left out of exports and AI export.</p>
+				<div id="places-list"></div>
+				<button id="pl-add" data-i18n="pl.add">Add current location</button>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.cams">Known cameras</h3>
+				<p id="cam-count" class="hint"></p>
+				<p class="hint" data-i18n="cam.hint">On the Map, zoom in and tap "Load cameras here" to download surveillance and speed cameras mapped in OpenStreetMap for that area. They are saved for offline use. You can also import a GeoJSON list.</p>
+				<div class="controls wrap">
+					<button id="cam-import" data-i18n="cam.import">Import GeoJSON</button>
+					<button id="cam-clear" data-i18n="cam.clear">Clear cameras</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.data">Data</h3>
+				<p class="hint" data-i18n="data.hint">Everything stays on this phone. Nothing is uploaded.</p>
+				<p id="ignore-count" class="hint"></p>
+				<p id="watch-count" class="hint"></p>
+				<div class="controls wrap">
+					<button id="ignore-clear" data-i18n="ignore.clear">Clear Mine list</button>
+					<button id="watch-clear" data-i18n="watch.clear">Clear Watch list</button>
+					<button id="placemem-clear" data-i18n="pm.clear">Clear tracker place memory</button>
+					<button id="tiles-clear" data-i18n="map.clear">Clear saved map tiles</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.check">Bluetooth check</h3>
+				<pre id="bt-check" class="hint mono"></pre>
+				<button id="demo-btn" data-i18n="demo.btn">Demo data (see how it looks)</button>
+			</div>
+
+			<div class="card">
+				<h3 data-i18n="set.about">About</h3>
+				<p class="hint" data-i18n="about.text">Argus is a receive-only Bluetooth LE watcher. It only listens. It cannot see Wi-Fi on iPhone, and it does not guarantee that every tracker or device will be found. Do not rely on it where safety is at stake. Signature library from Fieldwatch by Off Grid Pete LLC (MIT).</p>
+				<p class="hint mono" id="about-ver"></p>
+			</div>
+		</section>
+	</main>
+
+	<nav id="tabs">
+		<button data-tab="live" class="active"><span class="ic">≋</span><span data-i18n="tab.live">Live</span></button>
+		<button data-tab="map"><span class="ic">⌖</span><span data-i18n="tab.map">Map</span></button>
+		<button data-tab="hunt"><span class="ic">◎</span><span data-i18n="tab.hunt">Hunt</span></button>
+		<button data-tab="alerts"><span class="ic">!</span><span data-i18n="tab.alerts">Alerts</span><span id="alert-badge" class="badge hidden">0</span></button>
+		<button data-tab="reports"><span class="ic">▤</span><span data-i18n="tab.reports">Reports</span></button>
+		<button data-tab="settings"><span class="ic">☰</span><span data-i18n="tab.settings">Settings</span></button>
+	</nav>
+
+	<!-- Device detail sheet -->
+	<div id="sheet" class="sheet hidden">
+		<div class="sheet-inner">
+			<div class="sheet-head">
+				<div id="sh-title" class="sh-title"></div>
+				<button id="sh-close" class="x">✕</button>
+			</div>
+			<div id="sh-body" class="sh-body"></div>
+			<div class="controls wrap">
+				<button id="sh-hunt" class="primary" data-i18n="sh.hunt">Hunt</button>
+				<button id="sh-watch">Watch</button>
+				<button id="sh-mine">Mine</button>
+				<button id="sh-map" data-i18n="sh.map">Map</button>
+				<button id="sh-more" data-i18n="sh.more">More…</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Pocket mode -->
+	<div id="pocket" class="pocket hidden">
+		<div id="pocket-info" class="pocket-info"></div>
+		<div id="pocket-alert" class="pocket-alert hidden"></div>
+		<div class="pocket-hint" data-i18n="pocket.hint">Double-tap to wake</div>
+	</div>
+
+	<script src="vendor/leaflet/leaflet.js"></script>
+	<script src="data/signatures.js"></script>
+	<script src="data/companies.js"></script>
+	<script src="data/fastpair.js"></script>
+	<script src="js/util.js"></script>
+	<script src="js/i18n.js"></script>
+	<script src="js/store.js"></script>
+	<script src="js/signatures.js"></script>
+	<script src="js/decode.js"></script>
+	<script src="js/geo.js"></script>
+	<script src="js/scanner.js"></script>
+	<script src="js/alerts.js"></script>
+	<script src="js/reports.js"></script>
+	<script src="js/map.js"></script>
+	<script src="js/hunt.js"></script>
+	<script src="js/ui.js"></script>
+	<script src="js/app.js"></script>
+</body>
+</html>

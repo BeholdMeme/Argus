@@ -1,0 +1,29 @@
+Argus
+
+This product includes or is derived from third-party work:
+
+Fieldwatch — https://github.com/OffGridPete/Fieldwatch
+  Copyright (c) 2026 Off Grid Pete LLC, MIT License.
+  The Bluetooth LE signature catalog (data/signatures.js) and the logic for
+  tracker monitoring, Moving with you, pairing floods, drone swarm/perimeter,
+  and advertisement decoding are adapted from Fieldwatch.
+  Fieldwatch is a trademark of Off Grid Pete LLC. Argus is not made or
+  reviewed by Off Grid Pete LLC.
+
+Fast Pair model names (data/fastpair.js) were compiled by Fieldwatch from
+public partner / community listings of Google Fast Pair model IDs. They are
+not a Google product and are not covered by the MIT grant.
+
+Bluetooth SIG company identifiers (data/companies.js) come from
+Nordic Semiconductor's bluetooth-numbers-database
+(https://github.com/NordicSemiconductor/bluetooth-numbers-database),
+Copyright (c) 2019-2020 Nordic Semiconductor ASA, BSD-3-Clause.
+The underlying assigned numbers are published by the Bluetooth SIG and are
+subject to its terms.
+
+Leaflet 1.9.4 (vendor/leaflet) — Copyright (c) 2010-2023 Volodymyr Agafonkin,
+Copyright (c) 2010-2011 CloudMade. BSD-2-Clause (see vendor/leaflet/LICENSE).
+
+Map data © OpenStreetMap contributors (ODbL). Map tiles from the
+OpenStreetMap Foundation, OpenTopoMap (CC-BY-SA) and Esri are used under
+their respective terms of service.
